@@ -410,6 +410,22 @@ class BrowserOBD {
         const storedRaw = await this.sendCommand("03", 2000);
         const pendingRaw = await this.sendCommand("07", 2000);
         
+        const DTC_MAP = {
+            "P0171": "Sistema de Combustível Muito Pobre (Bank 1) - Falta de Combustível / Entrada de Ar",
+            "P0172": "Sistema de Combustível Muito Rico (Bank 1) - Excesso de Combustível / Bico Travado",
+            "P0300": "Falha de combustão múltipla/aleatória nos cilindros (Misfire)",
+            "P0301": "Falha de combustão detectada no Cilindro 1",
+            "P0302": "Falha de combustão detectada no Cilindro 2",
+            "P0303": "Falha de combustão detectada no Cilindro 3",
+            "P0304": "Falha de combustão detectada no Cilindro 4",
+            "P0335": "Circuito do Sensor de Rotação (CKP) - Sem Sinal",
+            "P0105": "Sensor de Pressão Absoluta no Coletor (MAP) - Faixa/Desempenho",
+            "P0115": "Sensor de Temperatura do Motor (ECT) - Falha de Circuito",
+            "P0116": "Sensor de Temperatura do Motor (ECT) - Faixa/Desempenho Incorreto",
+            "P0130": "Circuito da Sonda Lambda 1 (Pré-Cat) - Falha",
+            "P0443": "Válvula de Purga do Canister (EVAP) - Falha no Circuito"
+        };
+
         const parseCodes = (raw) => {
             const dtcs = [];
             const cleaned = raw.replace(/[^0-9A-Fa-f]/g, '').replace(/^(43|47)/, '');
@@ -420,7 +436,7 @@ class BrowserOBD {
                 if (chunk.length === 4 && chunk !== "0000") {
                     const prefix = prefixes[chunk[0].toUpperCase()] || 'P0';
                     const code = prefix + chunk.substring(1).toUpperCase();
-                    dtcs.push({ code: code, description: "Código de falha detectado na ECU" });
+                    dtcs.push({ code: code, description: DTC_MAP[code] || "Código de diagnóstico detectado na ECU" });
                 }
             }
             return dtcs;

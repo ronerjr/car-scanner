@@ -472,29 +472,36 @@ document.addEventListener('DOMContentLoaded', () => {
             if (isBrowserBTActive) {
                 ff = await browserOBD.readFreezeFrame();
             } else {
-                // Mock / Servidor
-                ff = {
-                    dtc: "P0171",
-                    rpm: 840,
-                    speed: 0,
-                    ect: 21,
-                    map: 39,
-                    stft: 53.0,
-                    ltft: 0.0,
-                    tps: 12
-                };
+                // Se conectado ao backend local ou simulador
+                const res = await fetch('/api/dtc/freeze_frame').catch(() => null);
+                if (res && res.ok) {
+                    ff = await res.json();
+                } else {
+                    ff = { dtc: null, rpm: null, speed: null, ect: null, map: null, stft: null, ltft: null, tps: null };
+                }
             }
 
-            document.getElementById('ff-dtc-badge').textContent = `DTC: ${ff.dtc || 'P0171'}`;
-            document.getElementById('ff-rpm').textContent = ff.rpm !== null ? `${ff.rpm} RPM` : '-- RPM';
-            document.getElementById('ff-speed').textContent = ff.speed !== null ? `${ff.speed} km/h` : '-- km/h';
-            document.getElementById('ff-ect').textContent = ff.ect !== null ? `${ff.ect} °C` : '-- °C';
-            document.getElementById('ff-map').textContent = ff.map !== null ? `${ff.map} kPa` : '-- kPa';
-            document.getElementById('ff-stft').textContent = ff.stft !== null ? `${ff.stft > 0 ? '+' : ''}${ff.stft}%` : '--%';
-            document.getElementById('ff-ltft').textContent = ff.ltft !== null ? `${ff.ltft > 0 ? '+' : ''}${ff.ltft}%` : '--%';
-            document.getElementById('ff-tps').textContent = ff.tps !== null ? `${ff.tps}%` : '--%';
-
-            alert("Caixa Preta (Freeze Frame) carregada com sucesso!");
+            if (ff && ff.dtc) {
+                document.getElementById('ff-dtc-badge').textContent = `DTC: ${ff.dtc}`;
+                document.getElementById('ff-rpm').textContent = ff.rpm !== null ? `${ff.rpm} RPM` : '-- RPM';
+                document.getElementById('ff-speed').textContent = ff.speed !== null ? `${ff.speed} km/h` : '-- km/h';
+                document.getElementById('ff-ect').textContent = ff.ect !== null ? `${ff.ect} °C` : '-- °C';
+                document.getElementById('ff-map').textContent = ff.map !== null ? `${ff.map} kPa` : '-- kPa';
+                document.getElementById('ff-stft').textContent = ff.stft !== null ? `${ff.stft > 0 ? '+' : ''}${ff.stft}%` : '--%';
+                document.getElementById('ff-ltft').textContent = ff.ltft !== null ? `${ff.ltft > 0 ? '+' : ''}${ff.ltft}%` : '--%';
+                document.getElementById('ff-tps').textContent = ff.tps !== null ? `${ff.tps}%` : '--%';
+                alert("Caixa Preta (Freeze Frame) carregada com os dados reais da ECU!");
+            } else {
+                document.getElementById('ff-dtc-badge').textContent = "DTC: NENHUM";
+                document.getElementById('ff-rpm').textContent = '-- RPM';
+                document.getElementById('ff-speed').textContent = '-- km/h';
+                document.getElementById('ff-ect').textContent = '-- °C';
+                document.getElementById('ff-map').textContent = '-- kPa';
+                document.getElementById('ff-stft').textContent = '--%';
+                document.getElementById('ff-ltft').textContent = '--%';
+                document.getElementById('ff-tps').textContent = '--%';
+                alert("Nenhum registro de Freeze Frame (Caixa Preta) armazenado na ECU.");
+            }
         } catch (e) {
             alert(`Erro ao ler Freeze Frame: ${e}`);
         }
@@ -511,30 +518,35 @@ document.addEventListener('DOMContentLoaded', () => {
             if (isBrowserBTActive) {
                 mis = await browserOBD.readMode06Misfires();
             } else {
-                // Simulação
-                mis = { cyl1: 14, cyl2: 2, cyl3: 38, cyl4: 5, total: 59 };
+                const res = await fetch('/api/dtc/mode6').catch(() => null);
+                if (res && res.ok) {
+                    mis = await res.json();
+                } else {
+                    mis = { cyl1: 0, cyl2: 0, cyl3: 0, cyl4: 0, total: 0 };
+                }
             }
 
-            document.getElementById('val-mis-cyl1').textContent = mis.cyl1;
-            document.getElementById('val-mis-cyl2').textContent = mis.cyl2;
-            document.getElementById('val-mis-cyl3').textContent = mis.cyl3;
-            document.getElementById('val-mis-cyl4').textContent = mis.cyl4;
-            document.getElementById('txt-total-misfires').textContent = `Total: ${mis.total} falhas`;
+            document.getElementById('val-mis-cyl1').textContent = mis ? mis.cyl1 : 0;
+            document.getElementById('val-mis-cyl2').textContent = mis ? mis.cyl2 : 0;
+            document.getElementById('val-mis-cyl3').textContent = mis ? mis.cyl3 : 0;
+            document.getElementById('val-mis-cyl4').textContent = mis ? mis.cyl4 : 0;
+            document.getElementById('txt-total-misfires').textContent = `Total: ${mis ? mis.total : 0} falhas`;
 
             // Colorir barras de acordo com a gravidade
             const updateBar = (barId, count) => {
                 const el = document.getElementById(barId);
+                if (!el) return;
                 if (count > 20) el.className = "h-1.5 rounded-full bg-rose-500 w-full mt-1";
                 else if (count > 5) el.className = "h-1.5 rounded-full bg-amber-400 w-full mt-1";
                 else el.className = "h-1.5 rounded-full bg-emerald-500 w-full mt-1";
             };
 
-            updateBar('bar-mis-cyl1', mis.cyl1);
-            updateBar('bar-mis-cyl2', mis.cyl2);
-            updateBar('bar-mis-cyl3', mis.cyl3);
-            updateBar('bar-mis-cyl4', mis.cyl4);
+            updateBar('bar-mis-cyl1', mis ? mis.cyl1 : 0);
+            updateBar('bar-mis-cyl2', mis ? mis.cyl2 : 0);
+            updateBar('bar-mis-cyl3', mis ? mis.cyl3 : 0);
+            updateBar('bar-mis-cyl4', mis ? mis.cyl4 : 0);
 
-            alert("Contador de Misfires (Modo 06) atualizado!");
+            alert("Contadores de Misfire do Modo 06 lidos com sucesso!");
         } catch (e) {
             alert(`Erro ao ler Modo 06: ${e}`);
         }
