@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OBD-II Telemetry & Diagnostic Pro</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              cyan: '#00f2fe',
+              blue: '#4facfe',
+              green: '#10b981',
+              amber: '#f59e0b',
+              rose: '#f43f5e',
+              dark: '#0a0e17',
+              panel: '#101726'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Lucide Icons & Chart.js -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body class="p-3 md:p-6 pb-24">
+
+  <!-- TOPO: Barra de Cabeçalho e Conexão -->
+  <header class="glass-panel rounded-2xl p-4 mb-6">
+    <div class="flex flex-col lg:flex-row items-center justify-between gap-4">
+      
+      <!-- Logo & Título -->
+      <div class="flex items-center gap-3">
+        <div class="p-3 rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-400">
+          <i data-lucide="gauge" class="w-7 h-7"></i>
+        </div>
+        <div>
+          <h1 class="text-xl font-bold font-tech tracking-wider text-white flex items-center gap-2">
+            AUTODIAG <span class="text-cyan-400 font-digital text-sm">PRO OBD-II</span>
+          </h1>
+          <p class="text-xs text-slate-400">Scanner Diagnóstico & Telemetria em Tempo Real</p>
+        </div>
+      </div>
+
+      <!-- Barra de Status de Conexão -->
+      <div class="flex flex-wrap items-center gap-2 text-xs">
+        <div id="badge-conn" class="px-3 py-1.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5 font-medium">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+          <span id="txt-conn-status">Conectado (Simulador)</span>
+        </div>
+        <div class="px-3 py-1.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
+          Porta: <span id="txt-port" class="font-mono text-cyan-400">VIRTUAL</span>
+        </div>
+        <div class="px-3 py-1.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700 hidden sm:block">
+          Protocolo: <span id="txt-proto" class="text-slate-200">ISO CAN</span>
+        </div>
+      </div>
+
+      <!-- Controles de Conexão -->
+      <div class="flex flex-wrap items-center gap-2 w-full lg:w-auto justify-end">
+        
+        <!-- Botão Conectar Web Bluetooth (Ideal para Tablet / Celular / Render) -->
+        <button id="btn-web-bt" class="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-lg shadow-blue-500/20 transition-all">
+          <i data-lucide="bluetooth" class="w-4 h-4 text-cyan-300"></i>
+          <span>Bluetooth Direto (Tablet/Chrome)</span>
+        </button>
+
+        <!-- Conexão via Backend Local / USB Serial -->
+        <div class="flex items-center gap-1.5 bg-slate-900/80 border border-slate-800 p-1 rounded-xl">
+          <select id="sel-ports" class="bg-transparent text-slate-200 text-xs px-2 py-1 outline-none">
+            <option value="SIM">Simulador Virtual</option>
+          </select>
+          <button id="btn-refresh-ports" title="Buscar portas Bluetooth/USB do PC" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300">
+            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+          </button>
+          <button id="btn-connect" class="px-3 py-1 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs flex items-center gap-1">
+            <i data-lucide="power" class="w-3.5 h-3.5"></i>
+            <span>Conectar</span>
+          </button>
+        </div>
+
+        <button id="btn-record" class="px-3 py-2 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-300 font-medium text-xs flex items-center gap-1.5 transition-all">
+          <i data-lucide="circle-dot" class="w-4 h-4 text-rose-500"></i>
+          <span id="btn-record-txt">Gravar Partida</span>
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- ABAS DE NAVEGAÇÃO -->
+  <nav class="flex items-center gap-2 mb-6 overflow-x-auto pb-2">
+    <button data-tab="tab-cockpit" class="tab-btn active px-4 py-2.5 rounded-xl bg-cyan-500 text-slate-950 font-bold text-xs flex items-center gap-2 shadow-lg shadow-cyan-500/20">
+      <i data-lucide="layout-dashboard" class="w-4 h-4"></i> Painel Geral
+    </button>
+    <button data-tab="tab-crank" class="tab-btn px-4 py-2.5 rounded-xl bg-slate-900/80 hover:bg-slate-800 text-slate-300 border border-slate-800 text-xs flex items-center gap-2">
+      <i data-lucide="zap" class="w-4 h-4 text-amber-400"></i> Diagnóstico de Partida
+    </button>
+    <button data-tab="tab-fuel" class="tab-btn px-4 py-2.5 rounded-xl bg-slate-900/80 hover:bg-slate-800 text-slate-300 border border-slate-800 text-xs flex items-center gap-2">
+      <i data-lucide="fuel" class="w-4 h-4 text-emerald-400"></i> Combustível & Flex
+    </button>
+    <button data-tab="tab-dtc" class="tab-btn px-4 py-2.5 rounded-xl bg-slate-900/80 hover:bg-slate-800 text-slate-300 border border-slate-800 text-xs flex items-center gap-2">
+      <i data-lucide="alert-triangle" class="w-4 h-4 text-rose-400"></i> Scanner Falhas (DTC)
+    </button>
+    <button data-tab="tab-logs" class="tab-btn px-4 py-2.5 rounded-xl bg-slate-900/80 hover:bg-slate-800 text-slate-300 border border-slate-800 text-xs flex items-center gap-2">
+      <i data-lucide="file-spreadsheet" class="w-4 h-4 text-blue-400"></i> Gravações & Logs
+    </button>
+  </nav>
+
+  <!-- ================= ABA 1: COCKPIT / VISÃO GERAL ================= -->
+  <section id="tab-cockpit" class="tab-content block space-y-6">
+    
+    <!-- Manômetros Principais (RPM, Velocidade, Tensão, MAP) -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="glass-panel rounded-2xl p-4 flex flex-col items-center justify-center">
+        <canvas id="gauge-rpm" width="220" height="190"></canvas>
+      </div>
+      <div class="glass-panel rounded-2xl p-4 flex flex-col items-center justify-center">
+        <canvas id="gauge-voltage" width="220" height="190"></canvas>
+      </div>
+      <div class="glass-panel rounded-2xl p-4 flex flex-col items-center justify-center">
+        <canvas id="gauge-map" width="220" height="190"></canvas>
+      </div>
+      <div class="glass-panel rounded-2xl p-4 flex flex-col items-center justify-center">
+        <canvas id="gauge-speed" width="220" height="190"></canvas>
+      </div>
+    </div>
+
+    <!-- Cards de Sensores Secundários -->
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+      
+      <div class="glass-panel rounded-2xl p-4">
+        <div class="text-xs text-slate-400 font-medium">Temp. Água (ECT)</div>
+        <div id="card-ect" class="text-2xl font-digital text-white mt-1">-- °C</div>
+        <div class="text-[11px] text-cyan-400 mt-1">Arrefecimento</div>
+      </div>
+
+      <div class="glass-panel rounded-2xl p-4">
+        <div class="text-xs text-slate-400 font-medium">Temp. Ar (IAT)</div>
+        <div id="card-iat" class="text-2xl font-digital text-white mt-1">-- °C</div>
+        <div class="text-[11px] text-blue-400 mt-1">Admissão</div>
+      </div>
+
+      <div class="glass-panel rounded-2xl p-4">
+        <div class="text-xs text-slate-400 font-medium">Borboleta (TPS)</div>
+        <div id="card-tps" class="text-2xl font-digital text-white mt-1">-- %</div>
+        <div class="text-[11px] text-emerald-400 mt-1">Abertura TBI</div>
+      </div>
+
+      <div class="glass-panel rounded-2xl p-4">
+        <div class="text-xs text-slate-400 font-medium">Ponto de Ignição</div>
+        <div id="card-timing" class="text-2xl font-digital text-white mt-1">-- °</div>
+        <div class="text-[11px] text-amber-400 mt-1">Avanço APMS</div>
+      </div>
+
+      <div class="glass-panel rounded-2xl p-4">
+        <div class="text-xs text-slate-400 font-medium">Carga Motor</div>
+        <div id="card-load" class="text-2xl font-digital text-white mt-1">-- %</div>
+        <div class="text-[11px] text-purple-400 mt-1">Calculada</div>
+      </div>
+
+      <div class="glass-panel rounded-2xl p-4">
+        <div class="text-xs text-slate-400 font-medium">Fluxo de Ar (MAF)</div>
+        <div id="card-maf" class="text-2xl font-digital text-white mt-1">-- g/s</div>
+        <div class="text-[11px] text-indigo-400 mt-1">Massa de Ar</div>
+      </div>
+
+    </div>
+
+  </section>
+
+  <!-- ================= ABA 2: DIAGNÓSTICO DE PARTIDA ================= -->
+  <section id="tab-crank" class="tab-content hidden space-y-6">
+    
+    <!-- Painel de Resumo do Arranque -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      
+      <div class="glass-panel rounded-2xl p-5 border-l-4 border-cyan-400">
+        <div class="text-xs text-slate-400 font-medium flex items-center justify-between">
+          <span>Menor Tensão no Arranque (Vmin)</span>
+          <i data-lucide="battery-charging" class="w-4 h-4 text-cyan-400"></i>
+        </div>
+        <div id="diag-vmin" class="text-3xl font-digital font-bold text-cyan-400 mt-2">-- V</div>
+        <div id="diag-vmin-msg" class="text-xs text-slate-400 mt-1">Ideal: acima de 9.8V</div>
+      </div>
+
+      <div class="glass-panel rounded-2xl p-5 border-l-4 border-emerald-400">
+        <div class="text-xs text-slate-400 font-medium flex items-center justify-between">
+          <span>Rotação Máx. no Arranque</span>
+          <i data-lucide="activity" class="w-4 h-4 text-emerald-400"></i>
+        </div>
+        <div id="diag-maxrpm" class="text-3xl font-digital font-bold text-emerald-400 mt-2">-- RPM</div>
+        <div id="diag-maxrpm-msg" class="text-xs text-slate-400 mt-1">Faixa saudável: 180 a 280 RPM</div>
+      </div>
+
+      <div class="glass-panel rounded-2xl p-5 border-l-4 border-amber-400">
+        <div class="text-xs text-slate-400 font-medium flex items-center justify-between">
+          <span>Status do Diagnóstico</span>
+          <i data-lucide="shield-alert" class="w-4 h-4 text-amber-400"></i>
+        </div>
+        <div id="diag-verdict-title" class="text-xl font-tech font-bold text-emerald-400 mt-2">Pronto para Partida</div>
+        <div id="diag-verdict-sub" class="text-xs text-slate-400 mt-1">Vire a chave para gravar os parâmetros</div>
+      </div>
+
+    </div>
+
+    <!-- Gráfico de Curva de Partida em Tempo Real -->
+    <div class="glass-panel rounded-2xl p-5">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h3 class="text-sm font-bold text-white font-tech uppercase tracking-wider flex items-center gap-2">
+            <i data-lucide="line-chart" class="w-4 h-4 text-cyan-400"></i> Curva de Tensão, RPM & Vácuo na Partida
+          </h3>
+          <p class="text-xs text-slate-400">Observe a queda da linha azul (Tensão) sincronizada com a subida da linha verde (RPM)</p>
+        </div>
+        <button id="btn-clear-chart" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs">
+          Limpar Gráfico
+        </button>
+      </div>
+      <div class="h-64 sm:h-80 w-full">
+        <canvas id="chart-cranking"></canvas>
+      </div>
+    </div>
+
+    <!-- Checklist Inteligente de Partida -->
+    <div class="glass-panel rounded-2xl p-5">
+      <h3 class="text-sm font-bold text-white font-tech uppercase tracking-wider mb-4 flex items-center gap-2">
+        <i data-lucide="check-circle" class="w-4 h-4 text-emerald-400"></i> Checklist Automatizado dos Sistemas de Ignição
+      </h3>
+      <div id="checklist-container" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <!-- Renderizado dinamicamente via JS -->
+      </div>
+    </div>
+
+    <!-- Alertas e Recomendações Mecânicas -->
+    <div id="box-alerts" class="glass-panel rounded-2xl p-5 border border-rose-500/30 hidden">
+      <h3 class="text-sm font-bold text-rose-400 font-tech uppercase tracking-wider mb-2 flex items-center gap-2">
+        <i data-lucide="alert-octagon" class="w-4 h-4"></i> Diagnóstico de Anomalias Encontradas
+      </h3>
+      <ul id="alerts-list" class="space-y-1.5 text-xs text-slate-300">
+        <!-- Alertas dinâmicos -->
+      </ul>
+    </div>
+
+  </section>
+
+  <!-- ================= ABA 3: COMBUSTÍVEL & FLEX ================= -->
+  <section id="tab-fuel" class="tab-content hidden space-y-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      
+      <!-- Painel A/F Flex -->
+      <div class="glass-panel rounded-2xl p-5 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-sm font-bold text-white font-tech uppercase tracking-wider flex items-center gap-2">
+              <i data-lucide="droplet" class="w-4 h-4 text-emerald-400"></i> Reconhecimento A/F Flex
+            </h3>
+            <span class="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold">PID 52 / ECU</span>
+          </div>
+          <p class="text-xs text-slate-400 mb-4">
+            Em carros Flex, se a ECU estiver calibrada para Etanol enquanto o tanque tem Gasolina, a partida fica pesada ou o motor afoga.
+          </p>
+          <div class="flex items-center gap-4 my-4">
+            <div id="val-ethanol" class="text-5xl font-digital font-bold text-emerald-400">--%</div>
+            <div class="text-xs text-slate-300 space-y-1">
+              <div>Combustível Detectado: <b id="lbl-fuel-type" class="text-white">Calculando...</b></div>
+              <div class="text-slate-400">Gasolina Padrão BR: ~27% Etanol</div>
+              <div class="text-slate-400">Etanol Puro: 100% Etanol</div>
+            </div>
+          </div>
+        </div>
+        <div class="p-3 rounded-xl bg-slate-900/60 border border-slate-800 text-xs text-slate-300 flex items-start gap-2">
+          <i data-lucide="info" class="w-4 h-4 text-cyan-400 shrink-0 mt-0.5"></i>
+          <span>Dica: Se abasteceu recentemente e o carro começou a falhar na partida, o A/F pode estar desprogramado.</span>
+        </div>
+      </div>
+
+      <!-- Ajustes de Injeção STFT / LTFT -->
+      <div class="glass-panel rounded-2xl p-5">
+        <h3 class="text-sm font-bold text-white font-tech uppercase tracking-wider mb-4 flex items-center gap-2">
+          <i data-lucide="sliders" class="w-4 h-4 text-cyan-400"></i> Ajustes de Combustível (Fuel Trims)
+        </h3>
+
+        <!-- STFT -->
+        <div class="space-y-2 mb-5">
+          <div class="flex justify-between text-xs">
+            <span class="text-slate-400">Ajuste de Curto Prazo (STFT)</span>
+            <span id="txt-stft" class="font-mono text-cyan-400 font-bold">0.0%</span>
+          </div>
+          <div class="trim-bar-container">
+            <div class="trim-center-line"></div>
+            <div id="bar-stft" class="trim-bar-fill bg-cyan-400" style="left: 50%; width: 0%;"></div>
+          </div>
+          <div class="flex justify-between text-[10px] text-slate-500">
+            <span>-25% (Rico / Tira Combustível)</span>
+            <span>0%</span>
+            <span>+25% (Pobre / Adiciona)</span>
+          </div>
+        </div>
+
+        <!-- LTFT -->
+        <div class="space-y-2 mb-5">
+          <div class="flex justify-between text-xs">
+            <span class="text-slate-400">Ajuste de Longo Prazo (LTFT)</span>
+            <span id="txt-ltft" class="font-mono text-amber-400 font-bold">0.0%</span>
+          </div>
+          <div class="trim-bar-container">
+            <div class="trim-center-line"></div>
+            <div id="bar-ltft" class="trim-bar-fill bg-amber-400" style="left: 50%; width: 0%;"></div>
+          </div>
+          <div class="flex justify-between text-[10px] text-slate-500">
+            <span>-25%</span>
+            <span>0%</span>
+            <span>+25%</span>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3 pt-2">
+          <div class="p-3 rounded-xl bg-slate-900/60 border border-slate-800">
+            <div class="text-[11px] text-slate-400">Sonda Lambda 1</div>
+            <div id="val-o2" class="text-xl font-digital text-white mt-0.5">-- V</div>
+          </div>
+          <div class="p-3 rounded-xl bg-slate-900/60 border border-slate-800">
+            <div class="text-[11px] text-slate-400">Pressão Linha</div>
+            <div id="val-fuel-press" class="text-xl font-digital text-white mt-0.5">-- kPa</div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ================= ABA 4: SCANNER DTC (CÓDIGOS DE FALHA) ================= -->
+  <section id="tab-dtc" class="tab-content hidden space-y-6">
+    <div class="glass-panel rounded-2xl p-5">
+      
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div>
+          <h3 class="text-base font-bold text-white font-tech uppercase tracking-wider flex items-center gap-2">
+            <i data-lucide="search" class="w-5 h-5 text-rose-400"></i> Leitura de Falhas da Injeção (DTC)
+          </h3>
+          <p class="text-xs text-slate-400">Varre memórias de falha ativas (Modo 03) e pendentes (Modo 07)</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="btn-scan-dtc" class="px-4 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs flex items-center gap-2 shadow-lg shadow-cyan-500/20">
+            <i data-lucide="refresh-cw" class="w-4 h-4"></i> Escanear ECU
+          </button>
+          <button id="btn-clear-dtc" class="px-4 py-2.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-300 font-bold text-xs flex items-center gap-2">
+            <i data-lucide="trash-2" class="w-4 h-4"></i> Apagar Falhas
+          </button>
+        </div>
+      </div>
+
+      <!-- Lista de Códigos Encontrados -->
+      <div id="dtc-results" class="space-y-3">
+        <div class="p-8 text-center text-slate-500 text-xs border border-dashed border-slate-800 rounded-xl">
+          Clique em "Escanear ECU" para ler os códigos de erro armazenados.
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ================= ABA 5: GRAVAÇÕES & LOGS CSV ================= -->
+  <section id="tab-logs" class="tab-content hidden space-y-6">
+    <div class="glass-panel rounded-2xl p-5">
+      
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h3 class="text-sm font-bold text-white font-tech uppercase tracking-wider flex items-center gap-2">
+            <i data-lucide="folder-open" class="w-4 h-4 text-blue-400"></i> Sessões de Telemetria Gravadas
+          </h3>
+          <p class="text-xs text-slate-400">Baixe os arquivos CSV para abrir no Excel ou ferramentas de análise</p>
+        </div>
+        <button id="btn-refresh-logs" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs flex items-center gap-1.5">
+          <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> Atualizar
+        </button>
+      </div>
+
+      <div id="logs-list" class="space-y-2">
+        <!-- Renderizado dinamicamente -->
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ================= BARRA INFERIOR FLUTUANTE DE SIMULAÇÃO ================= -->
+  <div id="sim-bar" class="fixed bottom-3 left-3 right-3 max-w-4xl mx-auto glass-panel-glow bg-slate-950/90 rounded-2xl p-3 px-4 z-50 flex flex-wrap items-center justify-between gap-3 border border-cyan-500/40">
+    <div class="flex items-center gap-2">
+      <span class="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-400 text-[10px] font-bold">MODO SIMULADOR</span>
+      <span class="text-xs text-slate-300">Cenário de Teste:</span>
+    </div>
+    
+    <div class="flex flex-wrap items-center gap-2">
+      <select id="sel-scenario" class="bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 outline-none">
+        <option value="normal">Partida Normal (Saudável)</option>
+        <option value="low_voltage">Bateria Arriada (&lt; 9.0V na partida)</option>
+        <option value="bad_ect">Sensor ECT Travado (92°C a frio)</option>
+        <option value="bad_flex_af">A/F Flex Errado (95% Etanol c/ Gasolina)</option>
+        <option value="vacuum_leak">Entrada de Ar Falsa / Sem Vácuo</option>
+        <option value="ckp_failure">Sensor de Rotação (0 RPM no arranque)</option>
+      </select>
+      
+      <button id="btn-sim-crank" class="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 shadow-md shadow-amber-500/20">
+        <i data-lucide="key" class="w-3.5 h-3.5"></i> Virar a Chave (Partida)
+      </button>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="/static/js/gauges.js"></script>
+  <script src="/static/js/charts.js"></script>
+  <script src="/static/js/browser_obd.js"></script>
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
