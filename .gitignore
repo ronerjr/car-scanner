@@ -7,3 +7,6 @@ venv/
 data/*.csv
 .vscode/
 .idea/
+ARTIGO_LINKEDIN.md
+artigo*.md
+
