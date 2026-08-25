@@ -431,6 +431,135 @@ class BrowserOBD {
         return { stored, pending, total: stored.length + pending.length };
     }
 
+    /**
+     * Modo 02 ($02) - Freeze Frame (Quadro Congelado no momento da falha)
+     */
+    async readFreezeFrame() {
+        this.onStatus({ status: 'reading_ff', message: 'Lendo Freeze Frame (Caixa Preta da Falha)...' });
+        
+        const ffData = {
+            dtc: null,
+            rpm: null,
+            speed: null,
+            ect: null,
+            map: null,
+            load: null,
+            stft: null,
+            ltft: null,
+            tps: null
+        };
+
+        try {
+            // PID 0202: DTC que causou o congelamento
+            const dtcBytes = await this.queryPID("02", "02");
+            if (dtcBytes && dtcBytes.length >= 2) {
+                const hex1 = dtcBytes[0].toString(16).padStart(2, '0');
+                const hex2 = dtcBytes[1].toString(16).padStart(2, '0');
+                const chunk = hex1 + hex2;
+                const prefixes = { '0': 'P0', '1': 'P1', '2': 'P2', '3': 'P3' };
+                ffData.dtc = (prefixes[chunk[0]] || 'P0') + chunk.substring(1).toUpperCase();
+            }
+
+            // RPM no congelamento
+            const rpmB = await this.queryPID("02", "0C");
+            if (rpmB && rpmB.length >= 2) ffData.rpm = Math.round(((rpmB[0] * 256) + rpmB[1]) / 4.0);
+
+            // Velocidade no congelamento
+            const spdB = await this.queryPID("02", "0D");
+            if (spdB && spdB.length >= 1) ffData.speed = spdB[0];
+
+            // ECT no congelamento
+            const ectB = await this.queryPID("02", "05");
+            if (ectB && ectB.length >= 1) ffData.ect = ectB[0] - 40;
+
+            // MAP no congelamento
+            const mapB = await this.queryPID("02", "0B");
+            if (mapB && mapB.length >= 1) ffData.map = mapB[0];
+
+            // Carga no congelamento
+            const loadB = await this.queryPID("02", "04");
+            if (loadB && loadB.length >= 1) ffData.load = Math.round((loadB[0] * 100.0) / 255.0);
+
+            // STFT / LTFT no congelamento
+            const stftB = await this.queryPID("02", "06");
+            if (stftB && stftB.length >= 1) ffData.stft = Number((((stftB[0] - 128) * 100.0) / 128.0).toFixed(1));
+
+            const ltftB = await this.queryPID("02", "07");
+            if (ltftB && ltftB.length >= 1) ffData.ltft = Number((((ltftB[0] - 128) * 100.0) / 128.0).toFixed(1));
+
+            // TPS no congelamento
+            const tpsB = await this.queryPID("02", "11");
+            if (tpsB && tpsB.length >= 1) ffData.tps = Math.round((tpsB[0] * 100.0) / 255.0);
+
+        } catch (err) {
+            console.warn("Erro ao ler Freeze Frame:", err);
+        }
+
+        return ffData;
+    }
+
+    /**
+     * Modo 06 ($06) - Contador de Falhas de Ignição (Misfires) por Cilindro
+     */
+    async readMode06Misfires() {
+        this.onStatus({ status: 'reading_mode6', message: 'Lendo contadores do Modo 06 (Misfires)...' });
+        
+        const misfires = {
+            cyl1: 0,
+            cyl2: 0,
+            cyl3: 0,
+            cyl4: 0,
+            total: 0
+        };
+
+        try {
+            // Em CAN standard (ISO 15765-4):
+            // 06 0B = Cyl 1 misfire count, 06 0C = Cyl 2, 06 0D = Cyl 3, 06 0E = Cyl 4
+            const parseMisfireCount = async (pid) => {
+                const raw = await this.sendCommand(`06${pid}`, 800);
+                const cleaned = raw.replace(/[^0-9A-Fa-f]/g, '');
+                if (cleaned.length >= 6) {
+                    // Pega os últimos 2 bytes de contagem
+                    const hexVal = cleaned.substring(cleaned.length - 4);
+                    const val = parseInt(hexVal, 16);
+                    return isNaN(val) ? 0 : val;
+                }
+                return 0;
+            };
+
+            misfires.cyl1 = await parseMisfireCount("0B");
+            misfires.cyl2 = await parseMisfireCount("0C");
+            misfires.cyl3 = await parseMisfireCount("0D");
+            misfires.cyl4 = await parseMisfireCount("0E");
+            misfires.total = misfires.cyl1 + misfires.cyl2 + misfires.cyl3 + misfires.cyl4;
+
+        } catch (err) {
+            console.warn("Erro no Modo 06:", err);
+        }
+
+        return misfires;
+    }
+
+    /**
+     * Modo 09 ($09) - Informações do Veículo (Chassi / VIN / Calibracao)
+     */
+    async readVehicleInfo() {
+        let vin = "Não disponível";
+        try {
+            const raw = await this.sendCommand("0902", 1500);
+            const cleaned = raw.replace(/[^0-9A-Fa-f]/g, '').replace(/^4902/, '');
+            let asciiStr = "";
+            for (let i = 0; i < cleaned.length; i += 2) {
+                const code = parseInt(cleaned.substring(i, i + 2), 16);
+                if (code >= 32 && code <= 126) {
+                    asciiStr += String.fromCharCode(code);
+                }
+            }
+            if (asciiStr.length >= 10) vin = asciiStr;
+        } catch (e) {}
+        return { vin };
+    }
+
     async clearDTCs() {
         const res = await this.sendCommand("04", 2500);
         return res.includes("OK") || res.includes("44");

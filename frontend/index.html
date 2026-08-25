@@ -354,16 +354,92 @@
           </h3>
           <p class="text-xs text-slate-400">Varre falhas e permite resetar a memória adaptativa de A/F e Fuel Trims da ECU</p>
         </div>
-        <div class="flex flex-wrap items-center gap-2">
-          <button id="btn-scan-dtc" class="px-4 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs flex items-center gap-2 shadow-lg shadow-cyan-500/20">
-            <i data-lucide="refresh-cw" class="w-4 h-4"></i> Escanear ECU
-          </button>
-          <button id="btn-reset-ecu" class="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center gap-2 shadow-lg shadow-amber-500/20">
-            <i data-lucide="rotate-ccw" class="w-4 h-4"></i> Resetar Injeção (A/F & Trims)
-          </button>
-          <button id="btn-clear-dtc" class="px-4 py-2.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-300 font-bold text-xs flex items-center gap-2">
-            <i data-lucide="trash-2" class="w-4 h-4"></i> Apagar Códigos
-          </button>
+      <!-- Botões de Ação do Scanner -->
+      <div class="flex flex-wrap items-center gap-2 mb-6">
+        <button id="btn-scan-dtc" class="px-4 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs flex items-center gap-2 shadow-lg shadow-cyan-500/20">
+          <i data-lucide="refresh-cw" class="w-4 h-4"></i> Escanear Falhas (DTC)
+        </button>
+        <button id="btn-freeze-frame" class="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center gap-2 shadow-lg shadow-blue-500/20">
+          <i data-lucide="camera" class="w-4 h-4 text-cyan-300"></i> Caixa Preta (Freeze Frame)
+        </button>
+        <button id="btn-mode6-misfires" class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-2 shadow-lg shadow-emerald-500/20">
+          <i data-lucide="flame" class="w-4 h-4 text-amber-300"></i> Misfires por Cilindro (Modo 06)
+        </button>
+        <button id="btn-reset-ecu" class="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center gap-2 shadow-lg shadow-amber-500/20">
+          <i data-lucide="rotate-ccw" class="w-4 h-4"></i> Resetar Injeção (A/F & Trims)
+        </button>
+        <button id="btn-clear-dtc" class="px-4 py-2.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-300 font-bold text-xs flex items-center gap-2">
+          <i data-lucide="trash-2" class="w-4 h-4"></i> Apagar Códigos
+        </button>
+      </div>
+
+      <!-- PAINEL 1: Contador de Misfires por Cilindro (Modo 06) -->
+      <div id="misfires-panel" class="glass-panel rounded-2xl p-5 mb-6 hidden border border-amber-500/30">
+        <h4 class="text-sm font-bold text-white font-tech uppercase tracking-wider mb-3 flex items-center justify-between">
+          <span class="flex items-center gap-2"><i data-lucide="flame" class="w-4 h-4 text-amber-400"></i> Monitor de Falhas de Queima por Cilindro (Modo 06)</span>
+          <span id="txt-total-misfires" class="px-2.5 py-0.5 rounded bg-amber-500/20 text-amber-300 text-xs font-mono font-bold">Total: 0 falhas</span>
+        </h4>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div class="p-3 rounded-xl bg-slate-900/80 border border-slate-800 text-center">
+            <div class="text-xs text-slate-400 font-bold">CILINDRO 1</div>
+            <div id="val-mis-cyl1" class="text-2xl font-digital text-white my-1">0</div>
+            <div id="bar-mis-cyl1" class="h-1.5 rounded-full bg-emerald-500 w-full mt-1"></div>
+          </div>
+          <div class="p-3 rounded-xl bg-slate-900/80 border border-slate-800 text-center">
+            <div class="text-xs text-slate-400 font-bold">CILINDRO 2</div>
+            <div id="val-mis-cyl2" class="text-2xl font-digital text-white my-1">0</div>
+            <div id="bar-mis-cyl2" class="h-1.5 rounded-full bg-emerald-500 w-full mt-1"></div>
+          </div>
+          <div class="p-3 rounded-xl bg-slate-900/80 border border-slate-800 text-center">
+            <div class="text-xs text-slate-400 font-bold">CILINDRO 3</div>
+            <div id="val-mis-cyl3" class="text-2xl font-digital text-white my-1">0</div>
+            <div id="bar-mis-cyl3" class="h-1.5 rounded-full bg-emerald-500 w-full mt-1"></div>
+          </div>
+          <div class="p-3 rounded-xl bg-slate-900/80 border border-slate-800 text-center">
+            <div class="text-xs text-slate-400 font-bold">CILINDRO 4</div>
+            <div id="val-mis-cyl4" class="text-2xl font-digital text-white my-1">0</div>
+            <div id="bar-mis-cyl4" class="h-1.5 rounded-full bg-emerald-500 w-full mt-1"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PAINEL 2: Caixa Preta / Freeze Frame (Modo 02) -->
+      <div id="freeze-frame-panel" class="glass-panel rounded-2xl p-5 mb-6 hidden border border-blue-500/30">
+        <h4 class="text-sm font-bold text-white font-tech uppercase tracking-wider mb-2 flex items-center justify-between">
+          <span class="flex items-center gap-2"><i data-lucide="camera" class="w-4 h-4 text-cyan-400"></i> Caixa Preta da Falha (Freeze Frame - Modo 02)</span>
+          <span id="ff-dtc-badge" class="px-2.5 py-0.5 rounded bg-rose-500/20 text-rose-300 text-xs font-mono font-bold">DTC: --</span>
+        </h4>
+        <p class="text-xs text-slate-400 mb-4">Condições exatas do motor no instante em que a falha foi registrada na memória:</p>
+        
+        <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+          <div class="p-2.5 rounded-xl bg-slate-900/70 border border-slate-800">
+            <div class="text-[11px] text-slate-400">RPM no Erro</div>
+            <div id="ff-rpm" class="text-lg font-digital text-white mt-0.5">-- RPM</div>
+          </div>
+          <div class="p-2.5 rounded-xl bg-slate-900/70 border border-slate-800">
+            <div class="text-[11px] text-slate-400">Velocidade</div>
+            <div id="ff-speed" class="text-lg font-digital text-white mt-0.5">-- km/h</div>
+          </div>
+          <div class="p-2.5 rounded-xl bg-slate-900/70 border border-slate-800">
+            <div class="text-[11px] text-slate-400">Temp. Água (ECT)</div>
+            <div id="ff-ect" class="text-lg font-digital text-white mt-0.5">-- °C</div>
+          </div>
+          <div class="p-2.5 rounded-xl bg-slate-900/70 border border-slate-800">
+            <div class="text-[11px] text-slate-400">Pressão (MAP)</div>
+            <div id="ff-map" class="text-lg font-digital text-white mt-0.5">-- kPa</div>
+          </div>
+          <div class="p-2.5 rounded-xl bg-slate-900/70 border border-slate-800">
+            <div class="text-[11px] text-slate-400">Ajuste STFT</div>
+            <div id="ff-stft" class="text-lg font-digital text-cyan-400 mt-0.5">--%</div>
+          </div>
+          <div class="p-2.5 rounded-xl bg-slate-900/70 border border-slate-800">
+            <div class="text-[11px] text-slate-400">Ajuste LTFT</div>
+            <div id="ff-ltft" class="text-lg font-digital text-amber-400 mt-0.5">--%</div>
+          </div>
+          <div class="p-2.5 rounded-xl bg-slate-900/70 border border-slate-800">
+            <div class="text-[11px] text-slate-400">Posição Borboleta</div>
+            <div id="ff-tps" class="text-lg font-digital text-emerald-400 mt-0.5">--%</div>
+          </div>
         </div>
       </div>
 

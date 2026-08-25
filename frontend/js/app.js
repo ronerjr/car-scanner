@@ -461,6 +461,85 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // 7.1 Leitura da Caixa Preta (Freeze Frame - Modo 02)
+    document.getElementById('btn-freeze-frame').addEventListener('click', async () => {
+        const ffPanel = document.getElementById('freeze-frame-panel');
+        ffPanel.classList.remove('hidden');
+        document.getElementById('ff-dtc-badge').textContent = "Lendo...";
+
+        try {
+            let ff = null;
+            if (isBrowserBTActive) {
+                ff = await browserOBD.readFreezeFrame();
+            } else {
+                // Mock / Servidor
+                ff = {
+                    dtc: "P0171",
+                    rpm: 840,
+                    speed: 0,
+                    ect: 21,
+                    map: 39,
+                    stft: 53.0,
+                    ltft: 0.0,
+                    tps: 12
+                };
+            }
+
+            document.getElementById('ff-dtc-badge').textContent = `DTC: ${ff.dtc || 'P0171'}`;
+            document.getElementById('ff-rpm').textContent = ff.rpm !== null ? `${ff.rpm} RPM` : '-- RPM';
+            document.getElementById('ff-speed').textContent = ff.speed !== null ? `${ff.speed} km/h` : '-- km/h';
+            document.getElementById('ff-ect').textContent = ff.ect !== null ? `${ff.ect} °C` : '-- °C';
+            document.getElementById('ff-map').textContent = ff.map !== null ? `${ff.map} kPa` : '-- kPa';
+            document.getElementById('ff-stft').textContent = ff.stft !== null ? `${ff.stft > 0 ? '+' : ''}${ff.stft}%` : '--%';
+            document.getElementById('ff-ltft').textContent = ff.ltft !== null ? `${ff.ltft > 0 ? '+' : ''}${ff.ltft}%` : '--%';
+            document.getElementById('ff-tps').textContent = ff.tps !== null ? `${ff.tps}%` : '--%';
+
+            alert("Caixa Preta (Freeze Frame) carregada com sucesso!");
+        } catch (e) {
+            alert(`Erro ao ler Freeze Frame: ${e}`);
+        }
+    });
+
+    // 7.2 Leitura de Misfires por Cilindro (Modo 06)
+    document.getElementById('btn-mode6-misfires').addEventListener('click', async () => {
+        const misPanel = document.getElementById('misfires-panel');
+        misPanel.classList.remove('hidden');
+        document.getElementById('txt-total-misfires').textContent = "Varrendo Modo 06...";
+
+        try {
+            let mis = null;
+            if (isBrowserBTActive) {
+                mis = await browserOBD.readMode06Misfires();
+            } else {
+                // Simulação
+                mis = { cyl1: 14, cyl2: 2, cyl3: 38, cyl4: 5, total: 59 };
+            }
+
+            document.getElementById('val-mis-cyl1').textContent = mis.cyl1;
+            document.getElementById('val-mis-cyl2').textContent = mis.cyl2;
+            document.getElementById('val-mis-cyl3').textContent = mis.cyl3;
+            document.getElementById('val-mis-cyl4').textContent = mis.cyl4;
+            document.getElementById('txt-total-misfires').textContent = `Total: ${mis.total} falhas`;
+
+            // Colorir barras de acordo com a gravidade
+            const updateBar = (barId, count) => {
+                const el = document.getElementById(barId);
+                if (count > 20) el.className = "h-1.5 rounded-full bg-rose-500 w-full mt-1";
+                else if (count > 5) el.className = "h-1.5 rounded-full bg-amber-400 w-full mt-1";
+                else el.className = "h-1.5 rounded-full bg-emerald-500 w-full mt-1";
+            };
+
+            updateBar('bar-mis-cyl1', mis.cyl1);
+            updateBar('bar-mis-cyl2', mis.cyl2);
+            updateBar('bar-mis-cyl3', mis.cyl3);
+            updateBar('bar-mis-cyl4', mis.cyl4);
+
+            alert("Contador de Misfires (Modo 06) atualizado!");
+        } catch (e) {
+            alert(`Erro ao ler Modo 06: ${e}`);
+        }
+    });
+
     // Reset de Parâmetros Adaptativos da Injeção (A/F & Trims)
     document.getElementById('btn-reset-ecu').addEventListener('click', async () => {
         if (!confirm("Deseja executar o RESET DOS PARÂMETROS DA INJEÇÃO?\n\nIsso zerará os mapas adaptativos de combustível (STFT/LTFT) e forçará a ECU a recalcular a mistura e o A/F de fábrica.")) return;
