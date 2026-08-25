@@ -210,6 +210,11 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('diag-maxrpm').textContent = `${Math.round(diag.max_crank_rpm)} RPM`;
         }
 
+        // Grava amostra no navegador se a gravação estiver ativa
+        if (isRecording) {
+            recordBrowserSample(tel);
+        }
+
         // Checklist de Saúde
         renderChecklist(diag.checks);
 
@@ -479,53 +484,210 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // 8. Gravação CSV & Logs
+    // 8. Gravação de Telemetria em CSV (Navegador & Servidor)
+    let browserRecordedSamples = [];
+    let browserRecordStartTime = 0;
+    let browserLogsHistory = [];
+
+    // Carrega histórico de logs locais do localStorage se existirem
+    try {
+        const saved = localStorage.getItem('autodiag_browser_logs');
+        if (saved) browserLogsHistory = JSON.parse(saved);
+    } catch (e) {}
+
     document.getElementById('btn-record').addEventListener('click', async () => {
-        try {
-            if (!isRecording) {
-                await fetch('/api/record/start', { method: 'POST' });
-            } else {
-                const res = await fetch('/api/record/stop', { method: 'POST' });
-                const data = await res.json();
-                alert(`Gravação finalizada! Salvo em ${data.result.filename} (${data.result.samples} amostras).`);
-                loadLogs();
+        if (!isRecording) {
+            // Iniciar Gravação
+            isRecording = true;
+            browserRecordedSamples = [];
+            browserRecordStartTime = Date.now();
+
+            const btnRec = document.getElementById('btn-record');
+            const btnTxt = document.getElementById('btn-record-txt');
+            btnRec.classList.add('pulse-recording', 'bg-rose-600', 'text-white');
+            btnTxt.textContent = "Gravando (0)";
+
+            if (!isBrowserBTActive) {
+                try { await fetch('/api/record/start', { method: 'POST' }); } catch (e) {}
             }
-        } catch (e) {
-            alert(`Erro na gravação: ${e}`);
+        } else {
+            // Parar Gravação e Gerar CSV
+            isRecording = false;
+            const btnRec = document.getElementById('btn-record');
+            const btnTxt = document.getElementById('btn-record-txt');
+            btnRec.classList.remove('pulse-recording', 'bg-rose-600', 'text-white');
+            btnTxt.textContent = "Gravar Partida";
+
+            if (isBrowserBTActive || browserRecordedSamples.length > 0) {
+                // Exporta arquivo CSV direto do Navegador / Tablet
+                exportBrowserCSV();
+            } else {
+                try {
+                    const res = await fetch('/api/record/stop', { method: 'POST' });
+                    const data = await res.json();
+                    alert(`Gravação finalizada! Salvo em ${data.result.filename} (${data.result.samples} amostras).`);
+                    loadLogs();
+                } catch (e) {
+                    alert(`Erro ao parar gravação: ${e}`);
+                }
+            }
         }
     });
 
+    function recordBrowserSample(tel) {
+        if (!isRecording || !tel) return;
+        const now = Date.now();
+        const elapsed = ((now - browserRecordStartTime) / 1000).toFixed(2);
+        
+        browserRecordedSamples.push({
+            timestamp: new Date(now).toISOString(),
+            time_elapsed: elapsed,
+            voltage: tel.voltage !== null ? tel.voltage : '',
+            rpm: tel.rpm !== null ? tel.rpm : '',
+            speed: tel.speed !== null ? tel.speed : '',
+            ect: tel.ect !== null ? tel.ect : '',
+            iat: tel.iat !== null ? tel.iat : '',
+            map: tel.map !== null ? tel.map : '',
+            maf: tel.maf !== null ? tel.maf : '',
+            tps: tel.tps !== null ? tel.tps : '',
+            timing_advance: tel.timing_advance !== null ? tel.timing_advance : '',
+            stft: tel.stft !== null ? tel.stft : '',
+            ltft: tel.ltft !== null ? tel.ltft : '',
+            o2_b1s1: tel.o2_b1s1 !== null ? tel.o2_b1s1 : '',
+            fuel_pressure: tel.fuel_pressure !== null ? tel.fuel_pressure : '',
+            ethanol_percent: tel.ethanol_percent !== null ? tel.ethanol_percent : '',
+            engine_load: tel.engine_load !== null ? tel.engine_load : ''
+        });
+
+        // Atualiza contador no botão
+        document.getElementById('btn-record-txt').textContent = `Gravando (${browserRecordedSamples.length})`;
+    }
+
+    function exportBrowserCSV() {
+        if (browserRecordedSamples.length === 0) {
+            alert("Nenhum dado capturado durante a gravação.");
+            return;
+        }
+
+        const headers = Object.keys(browserRecordedSamples[0]);
+        let csvContent = headers.join(",") + "\n";
+
+        browserRecordedSamples.forEach(row => {
+            const values = headers.map(h => row[h] !== undefined ? row[h] : '');
+            csvContent += values.join(",") + "\n";
+        });
+
+        // Nome do arquivo com timestamp
+        const nowStr = new Date().toISOString().replace(/[-:T]/g, '_').slice(0, 15);
+        const filename = `partida_bluetooth_${nowStr}.csv`;
+
+        // Salva histórico no navegador
+        browserLogsHistory.unshift({
+            filename: filename,
+            samples: browserRecordedSamples.length,
+            created_at: new Date().toLocaleString(),
+            csvData: csvContent
+        });
+        if (browserLogsHistory.length > 20) browserLogsHistory.pop();
+        try { localStorage.setItem('autodiag_browser_logs', JSON.stringify(browserLogsHistory)); } catch (e) {}
+
+        // Dispara download automático do arquivo CSV no Tablet/PC
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", filename);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        alert(`Gravação concluída! O arquivo ${filename} com ${browserRecordedSamples.length} amostras reais foi baixado para o seu dispositivo.`);
+        renderLogsList();
+    }
+
     async function loadLogs() {
+        if (isBrowserBTActive || browserLogsHistory.length > 0) {
+            renderLogsList();
+            return;
+        }
         try {
             const res = await fetch('/api/logs');
             const data = await res.json();
-            const listDiv = document.getElementById('logs-list');
-            if (!data.logs || data.logs.length === 0) {
-                listDiv.innerHTML = '<div class="p-6 text-center text-slate-500 text-xs border border-dashed border-slate-800 rounded-xl">Nenhum log gravado ainda. Clique em "Gravar Partida" no topo para gravar.</div>';
-                return;
-            }
-            let html = '';
-            data.logs.forEach(l => {
-                html += `
-                    <div class="p-3 rounded-xl bg-slate-900/60 border border-slate-800 flex items-center justify-between">
-                        <div class="flex items-center gap-3">
-                            <i data-lucide="file-text" class="w-4 h-4 text-blue-400"></i>
-                            <div>
-                                <div class="text-xs font-mono font-bold text-white">${l.filename}</div>
-                                <div class="text-[10px] text-slate-400">${l.created_at} • ${l.size_kb} KB</div>
-                            </div>
-                        </div>
-                        <a href="/api/logs/download/${l.filename}" download class="px-3 py-1.5 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 text-xs flex items-center gap-1">
-                            <i data-lucide="download" class="w-3.5 h-3.5"></i> Baixar CSV
-                        </a>
-                    </div>
-                `;
-            });
-            listDiv.innerHTML = html;
-            lucide.createIcons();
+            renderServerLogs(data.logs || []);
         } catch (e) {
-            console.error("Erro ao carregar logs:", e);
+            renderLogsList();
         }
+    }
+
+    function renderLogsList() {
+        const listDiv = document.getElementById('logs-list');
+        if (!listDiv) return;
+
+        if (browserLogsHistory.length === 0) {
+            listDiv.innerHTML = '<div class="p-6 text-center text-slate-500 text-xs border border-dashed border-slate-800 rounded-xl">Nenhum log gravado ainda. Clique em "Gravar Partida" no topo para gravar a telemetria do Bluetooth.</div>';
+            return;
+        }
+
+        let html = '';
+        browserLogsHistory.forEach((l, index) => {
+            html += `
+                <div class="p-3 rounded-xl bg-slate-900/60 border border-slate-800 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <i data-lucide="file-text" class="w-4 h-4 text-emerald-400"></i>
+                        <div>
+                            <div class="text-xs font-mono font-bold text-white">${l.filename}</div>
+                            <div class="text-[10px] text-slate-400">${l.created_at} • ${l.samples} amostras (Bluetooth Real)</div>
+                        </div>
+                    </div>
+                    <button onclick="downloadBrowserLog(${index})" class="px-3 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 text-xs flex items-center gap-1">
+                        <i data-lucide="download" class="w-3.5 h-3.5"></i> Baixar CSV
+                    </button>
+                </div>
+            `;
+        });
+        listDiv.innerHTML = html;
+        lucide.createIcons();
+    }
+
+    window.downloadBrowserLog = function(index) {
+        const log = browserLogsHistory[index];
+        if (!log || !log.csvData) return;
+        const blob = new Blob([log.csvData], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", log.filename);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    function renderServerLogs(logs) {
+        const listDiv = document.getElementById('logs-list');
+        if (!listDiv) return;
+        if (!logs || logs.length === 0) {
+            listDiv.innerHTML = '<div class="p-6 text-center text-slate-500 text-xs border border-dashed border-slate-800 rounded-xl">Nenhum log gravado ainda. Clique em "Gravar Partida" no topo para gravar.</div>';
+            return;
+        }
+        let html = '';
+        logs.forEach(l => {
+            html += `
+                <div class="p-3 rounded-xl bg-slate-900/60 border border-slate-800 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <i data-lucide="file-text" class="w-4 h-4 text-blue-400"></i>
+                        <div>
+                            <div class="text-xs font-mono font-bold text-white">${l.filename}</div>
+                            <div class="text-[10px] text-slate-400">${l.created_at} • ${l.size_kb} KB</div>
+                        </div>
+                    </div>
+                    <a href="/api/logs/download/${l.filename}" download class="px-3 py-1.5 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 text-xs flex items-center gap-1">
+                        <i data-lucide="download" class="w-3.5 h-3.5"></i> Baixar CSV
+                    </a>
+                </div>
+            `;
+        });
+        listDiv.innerHTML = html;
+        lucide.createIcons();
     }
 
     document.getElementById('btn-refresh-logs').addEventListener('click', loadLogs);
