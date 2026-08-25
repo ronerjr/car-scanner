@@ -9,4 +9,6 @@ data/*.csv
 .idea/
 ARTIGO_LINKEDIN.md
 artigo*.md
+artigo*.html
+
 
