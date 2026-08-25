@@ -442,12 +442,40 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-clear-dtc').addEventListener('click', async () => {
         if (!confirm("Tem certeza que deseja apagar os códigos de erro da ECU e resetar a luz da injeção?")) return;
         try {
-            const res = await fetch('/api/dtc/clear', { method: 'POST' });
-            const data = await res.json();
-            alert(data.message || "Comando enviado.");
+            if (isBrowserBTActive) {
+                const ok = await browserOBD.clearDTCs();
+                alert(ok ? "Códigos apagados da ECU com sucesso!" : "Comando enviado para a ECU.");
+            } else {
+                const res = await fetch('/api/dtc/clear', { method: 'POST' });
+                const data = await res.json();
+                alert(data.message || "Comando enviado.");
+            }
             document.getElementById('btn-scan-dtc').click();
         } catch (e) {
             alert(`Erro ao apagar códigos: ${e}`);
+        }
+    });
+
+    // Reset de Parâmetros Adaptativos da Injeção (A/F & Trims)
+    document.getElementById('btn-reset-ecu').addEventListener('click', async () => {
+        if (!confirm("Deseja executar o RESET DOS PARÂMETROS DA INJEÇÃO?\n\nIsso zerará os mapas adaptativos de combustível (STFT/LTFT) e forçará a ECU a recalcular a mistura e o A/F de fábrica.")) return;
+        
+        try {
+            if (isBrowserBTActive) {
+                await browserOBD.resetECUAdaptations();
+                alert("Reset da Injeção concluído com sucesso via Web Bluetooth!");
+            } else {
+                const res = await fetch('/api/ecu/reset', { method: 'POST' });
+                const data = await res.json();
+                alert(data.message || "Reset concluído com sucesso!");
+            }
+            // Limpa mostradores visuais de STFT/LTFT
+            updateTrimBar('bar-stft', 0);
+            updateTrimBar('bar-ltft', 0);
+            document.getElementById('txt-stft').textContent = "0.0%";
+            document.getElementById('txt-ltft').textContent = "0.0%";
+        } catch (e) {
+            alert(`Erro ao executar reset da injeção: ${e}`);
         }
     });
 

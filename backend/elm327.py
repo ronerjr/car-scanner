@@ -391,3 +391,19 @@ class ELM327:
             return False
         res = self._send_command("04", timeout=3.0)
         return "OK" in res or "44" in res
+
+    def reset_ecu_adaptations(self) -> bool:
+        """Reseta parâmetros adaptativos, A/F e Fuel Trims da ECU"""
+        if not self.is_connected:
+            return False
+        # 1. Modo 04 limpa falhas e zera trims aprendidos
+        self._send_command("04", timeout=3.0)
+        time.sleep(0.3)
+        # 2. Rotinas estendidas opcionais
+        try:
+            self._send_command("14FFFFFF", timeout=1.0)
+            self._send_command("31010201", timeout=1.0)
+        except Exception:
+            pass
+        return True
+

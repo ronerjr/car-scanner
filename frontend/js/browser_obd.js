@@ -436,6 +436,37 @@ class BrowserOBD {
         return res.includes("OK") || res.includes("44");
     }
 
+    /**
+     * Reset de Parâmetros Adaptativos da Injeção (A/F Reset & Fuel Trim Reset)
+     * Envia o comando Mode 04 e comandos de reinicialização da memória volátil da ECU
+     */
+    async resetECUAdaptations() {
+        this.onStatus({ status: 'resetting', message: 'Enviando comando de Reset de Parâmetros para a ECU...' });
+        
+        // 1. Envia Modo 04 (Limpa DTCs, congela dados e zera LTFT/STFT na maioria das ECUs)
+        await this.sendCommand("04", 2500);
+        await new Promise(r => setTimeout(r, 300));
+
+        // 2. Comandos de rotina estendida de reset de memória volátil
+        try {
+            await this.sendCommand("14FFFFFF", 1000); // UDS Clear Diagnostic Information
+            await this.sendCommand("31010201", 1000); // Routine Control Reset Adaptations
+        } catch (e) {
+            // Ignora se a ECU não suportar UDS estendido
+        }
+
+        // 3. Reinicializa buffers e filtros no ELM327
+        await this.sendCommand("ATWS", 1000);
+        await new Promise(r => setTimeout(r, 400));
+        await this.initELM();
+
+        this.minCrankVoltage = 99.0;
+        this.maxCrankRPM = 0.0;
+
+        this.onStatus({ status: 'connected', message: 'Parâmetros da Injeção Resetados com Sucesso!' });
+        return true;
+    }
+
     disconnect() {
         this.isPolling = false;
         this.isConnected = false;

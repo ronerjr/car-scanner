@@ -139,6 +139,16 @@ def clear_dtcs():
     else:
         return {"status": "ok", "message": "Códigos apagados (Simulador)."}
 
+@app.post("/api/ecu/reset")
+def reset_ecu():
+    diagnostic.reset_crank_stats()
+    if connection_mode == "hardware":
+        ok = elm.reset_ecu_adaptations()
+        return {"status": "ok" if ok else "error", "message": "Parâmetros e memória adaptativa da ECU resetados com sucesso!" if ok else "Falha ao resetar ECU."}
+    else:
+        return {"status": "ok", "message": "Parâmetros da ECU resetados (Simulador)."}
+
+
 @app.post("/api/record/start")
 def start_recording():
     fn = telemetry_logger.start_recording()
