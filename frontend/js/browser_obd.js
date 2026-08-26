@@ -268,31 +268,43 @@ class BrowserOBD {
                     telemetry.rpm = Math.round(((rpmB[0] * 256) + rpmB[1]) / 4.0);
                 }
 
-                // 2. Vácuo / MAP (PID 0B)
+                // 2. Velocidade do Veículo (PID 0D) - 1 byte: km/h
+                const spdB = await this.queryPID("01", "0D");
+                if (spdB && spdB.length >= 1) {
+                    telemetry.speed = spdB[0];
+                }
+
+                // 3. Vácuo / MAP (PID 0B)
                 const mapB = await this.queryPID("01", "0B");
                 if (mapB && mapB.length >= 1) {
                     telemetry.map = mapB[0];
                 }
 
-                // 3. ECT (PID 05)
+                // 4. ECT (PID 05)
                 const ectB = await this.queryPID("01", "05");
                 if (ectB && ectB.length >= 1) {
                     telemetry.ect = ectB[0] - 40;
                 }
 
-                // 4. IAT (PID 0F)
+                // 5. IAT (PID 0F)
                 const iatB = await this.queryPID("01", "0F");
                 if (iatB && iatB.length >= 1) {
                     telemetry.iat = iatB[0] - 40;
                 }
 
-                // 5. TPS (PID 11)
+                // 6. TPS (PID 11)
                 const tpsB = await this.queryPID("01", "11");
                 if (tpsB && tpsB.length >= 1) {
                     telemetry.tps = Math.round((tpsB[0] * 100.0) / 255.0);
                 }
 
-                // 6. STFT & LTFT (PIDs 06 e 07)
+                // 7. Carga do Motor (PID 04)
+                const loadB = await this.queryPID("01", "04");
+                if (loadB && loadB.length >= 1) {
+                    telemetry.engine_load = Math.round((loadB[0] * 100.0) / 255.0);
+                }
+
+                // 8. STFT & LTFT (PIDs 06 e 07)
                 const stftB = await this.queryPID("01", "06");
                 if (stftB && stftB.length >= 1) {
                     telemetry.stft = Number((((stftB[0] - 128) * 100.0) / 128.0).toFixed(1));
@@ -303,22 +315,28 @@ class BrowserOBD {
                     telemetry.ltft = Number((((ltftB[0] - 128) * 100.0) / 128.0).toFixed(1));
                 }
 
-                // 7. Ponto de Ignição (PID 0E)
+                // 9. Ponto de Ignição (PID 0E)
                 const advB = await this.queryPID("01", "0E");
                 if (advB && advB.length >= 1) {
                     telemetry.timing_advance = Number(((advB[0] / 2.0) - 64.0).toFixed(1));
                 }
 
-                // 8. % Etanol Flex (PID 52)
+                // 10. % Etanol Flex (PID 52)
                 const ethB = await this.queryPID("01", "52");
                 if (ethB && ethB.length >= 1) {
                     telemetry.ethanol_percent = Math.round((ethB[0] * 100.0) / 255.0);
                 }
 
-                // 9. Sonda Lambda 1 (PID 14)
+                // 11. Sonda Lambda 1 (PID 14)
                 const o2B = await this.queryPID("01", "14");
                 if (o2B && o2B.length >= 1) {
                     telemetry.o2_b1s1 = Number((o2B[0] / 200.0).toFixed(3));
+                }
+
+                // 12. MAF (PID 10)
+                const mafB = await this.queryPID("01", "10");
+                if (mafB && mafB.length >= 2) {
+                    telemetry.maf = Number((((mafB[0] * 256) + mafB[1]) / 100.0).toFixed(2));
                 }
 
                 // Executa diagnóstico no navegador
