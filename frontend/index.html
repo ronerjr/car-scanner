@@ -124,55 +124,85 @@
     
     <!-- Manômetros Principais (RPM, Velocidade, Tensão, MAP) -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      <div class="glass-panel rounded-2xl p-4 flex flex-col items-center justify-center">
+      <div id="panel-gauge-rpm" class="glass-panel rounded-2xl p-4 flex flex-col items-center justify-center transition-all duration-300">
         <canvas id="gauge-rpm" width="220" height="190"></canvas>
+        <div class="mt-1 text-center">
+          <span id="ref-badge-rpm" class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800/90 text-slate-400 border border-slate-700/60 shadow-sm">Ideal: 750 a 950 RPM (Lenta)</span>
+        </div>
       </div>
-      <div class="glass-panel rounded-2xl p-4 flex flex-col items-center justify-center">
+      <div id="panel-gauge-voltage" class="glass-panel rounded-2xl p-4 flex flex-col items-center justify-center transition-all duration-300">
         <canvas id="gauge-voltage" width="220" height="190"></canvas>
+        <div class="mt-1 text-center">
+          <span id="ref-badge-voltage" class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800/90 text-slate-400 border border-slate-700/60 shadow-sm">Ideal: 13.5 a 14.5V (Alternador)</span>
+        </div>
       </div>
-      <div class="glass-panel rounded-2xl p-4 flex flex-col items-center justify-center">
+      <div id="panel-gauge-map" class="glass-panel rounded-2xl p-4 flex flex-col items-center justify-center transition-all duration-300">
         <canvas id="gauge-map" width="220" height="190"></canvas>
+        <div class="mt-1 text-center">
+          <span id="ref-badge-map" class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800/90 text-slate-400 border border-slate-700/60 shadow-sm">Ideal: 28 a 38 kPa (Lenta)</span>
+        </div>
       </div>
-      <div class="glass-panel rounded-2xl p-4 flex flex-col items-center justify-center">
+      <div id="panel-gauge-speed" class="glass-panel rounded-2xl p-4 flex flex-col items-center justify-center transition-all duration-300">
         <canvas id="gauge-speed" width="220" height="190"></canvas>
+        <div class="mt-1 text-center">
+          <span id="ref-badge-speed" class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800/90 text-slate-400 border border-slate-700/60 shadow-sm">Faixa: 0 a 140 km/h</span>
+        </div>
       </div>
     </div>
 
     <!-- Cards de Sensores Secundários -->
     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
       
-      <div class="glass-panel rounded-2xl p-4">
-        <div class="text-xs text-slate-400 font-medium">Temp. Água (ECT)</div>
+      <div id="box-card-ect" class="glass-panel rounded-2xl p-4 transition-all duration-300">
+        <div class="flex items-center justify-between">
+          <span class="text-xs text-slate-400 font-medium">Temp. Água</span>
+          <span id="ref-badge-ect" class="text-[9px] font-mono px-1.5 py-0.2 rounded bg-slate-800 text-slate-400">82-98°C</span>
+        </div>
         <div id="card-ect" class="text-2xl font-digital text-white mt-1">-- °C</div>
         <div class="text-[11px] text-cyan-400 mt-1">Arrefecimento</div>
       </div>
 
-      <div class="glass-panel rounded-2xl p-4">
-        <div class="text-xs text-slate-400 font-medium">Temp. Ar (IAT)</div>
+      <div id="box-card-iat" class="glass-panel rounded-2xl p-4 transition-all duration-300">
+        <div class="flex items-center justify-between">
+          <span class="text-xs text-slate-400 font-medium">Temp. Ar</span>
+          <span id="ref-badge-iat" class="text-[9px] font-mono px-1.5 py-0.2 rounded bg-slate-800 text-slate-400">15-50°C</span>
+        </div>
         <div id="card-iat" class="text-2xl font-digital text-white mt-1">-- °C</div>
-        <div class="text-[11px] text-blue-400 mt-1">Admissão</div>
+        <div class="text-[11px] text-blue-400 mt-1">Admissão (IAT)</div>
       </div>
 
-      <div class="glass-panel rounded-2xl p-4">
-        <div class="text-xs text-slate-400 font-medium">Borboleta (TPS)</div>
+      <div id="box-card-tps" class="glass-panel rounded-2xl p-4 transition-all duration-300">
+        <div class="flex items-center justify-between">
+          <span class="text-xs text-slate-400 font-medium">Borboleta</span>
+          <span id="ref-badge-tps" class="text-[9px] font-mono px-1.5 py-0.2 rounded bg-slate-800 text-slate-400">8-16%</span>
+        </div>
         <div id="card-tps" class="text-2xl font-digital text-white mt-1">-- %</div>
         <div class="text-[11px] text-emerald-400 mt-1">Abertura TBI</div>
       </div>
 
-      <div class="glass-panel rounded-2xl p-4">
-        <div class="text-xs text-slate-400 font-medium">Ponto de Ignição</div>
+      <div id="box-card-timing" class="glass-panel rounded-2xl p-4 transition-all duration-300">
+        <div class="flex items-center justify-between">
+          <span class="text-xs text-slate-400 font-medium">Ponto Ignição</span>
+          <span id="ref-badge-timing" class="text-[9px] font-mono px-1.5 py-0.2 rounded bg-slate-800 text-slate-400">+5 a +15°</span>
+        </div>
         <div id="card-timing" class="text-2xl font-digital text-white mt-1">-- °</div>
         <div class="text-[11px] text-amber-400 mt-1">Avanço APMS</div>
       </div>
 
-      <div class="glass-panel rounded-2xl p-4">
-        <div class="text-xs text-slate-400 font-medium">Carga Motor</div>
+      <div id="box-card-load" class="glass-panel rounded-2xl p-4 transition-all duration-300">
+        <div class="flex items-center justify-between">
+          <span class="text-xs text-slate-400 font-medium">Carga Motor</span>
+          <span id="ref-badge-load" class="text-[9px] font-mono px-1.5 py-0.2 rounded bg-slate-800 text-slate-400">15-30%</span>
+        </div>
         <div id="card-load" class="text-2xl font-digital text-white mt-1">-- %</div>
         <div class="text-[11px] text-purple-400 mt-1">Calculada</div>
       </div>
 
-      <div class="glass-panel rounded-2xl p-4">
-        <div class="text-xs text-slate-400 font-medium">Fluxo de Ar (MAF)</div>
+      <div id="box-card-maf" class="glass-panel rounded-2xl p-4 transition-all duration-300">
+        <div class="flex items-center justify-between">
+          <span class="text-xs text-slate-400 font-medium">Fluxo Ar (MAF)</span>
+          <span id="ref-badge-maf" class="text-[9px] font-mono px-1.5 py-0.2 rounded bg-slate-800 text-slate-400">1.8-3.5g/s</span>
+        </div>
         <div id="card-maf" class="text-2xl font-digital text-white mt-1">-- g/s</div>
         <div class="text-[11px] text-indigo-400 mt-1">Massa de Ar</div>
       </div>
@@ -295,8 +325,11 @@
 
         <!-- STFT -->
         <div class="space-y-2 mb-5">
-          <div class="flex justify-between text-xs">
-            <span class="text-slate-400">Ajuste de Curto Prazo (STFT)</span>
+          <div class="flex justify-between items-center text-xs">
+            <div class="flex items-center gap-2">
+              <span class="text-slate-400">Ajuste de Curto Prazo (STFT)</span>
+              <span id="ref-badge-stft" class="text-[9px] font-mono px-1.5 py-0.2 rounded bg-slate-800 text-slate-400">Ideal: -5% a +5%</span>
+            </div>
             <span id="txt-stft" class="font-mono text-cyan-400 font-bold">0.0%</span>
           </div>
           <div class="trim-bar-container">
@@ -312,8 +345,11 @@
 
         <!-- LTFT -->
         <div class="space-y-2 mb-5">
-          <div class="flex justify-between text-xs">
-            <span class="text-slate-400">Ajuste de Longo Prazo (LTFT)</span>
+          <div class="flex justify-between items-center text-xs">
+            <div class="flex items-center gap-2">
+              <span class="text-slate-400">Ajuste de Longo Prazo (LTFT)</span>
+              <span id="ref-badge-ltft" class="text-[9px] font-mono px-1.5 py-0.2 rounded bg-slate-800 text-slate-400">Ideal: -5% a +5%</span>
+            </div>
             <span id="txt-ltft" class="font-mono text-amber-400 font-bold">0.0%</span>
           </div>
           <div class="trim-bar-container">
@@ -328,12 +364,18 @@
         </div>
 
         <div class="grid grid-cols-2 gap-3 pt-2">
-          <div class="p-3 rounded-xl bg-slate-900/60 border border-slate-800">
-            <div class="text-[11px] text-slate-400">Sonda Lambda 1</div>
+          <div id="box-val-o2" class="p-3 rounded-xl bg-slate-900/60 border border-slate-800 transition-all duration-300">
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] text-slate-400">Sonda Lambda 1</span>
+              <span id="ref-badge-o2" class="text-[9px] font-mono px-1.5 py-0.2 rounded bg-slate-800 text-slate-400">0.1-0.9V</span>
+            </div>
             <div id="val-o2" class="text-xl font-digital text-white mt-0.5">-- V</div>
           </div>
-          <div class="p-3 rounded-xl bg-slate-900/60 border border-slate-800">
-            <div class="text-[11px] text-slate-400">Pressão Linha</div>
+          <div id="box-val-fuel-press" class="p-3 rounded-xl bg-slate-900/60 border border-slate-800 transition-all duration-300">
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] text-slate-400">Pressão Linha</span>
+              <span id="ref-badge-fuel-press" class="text-[9px] font-mono px-1.5 py-0.2 rounded bg-slate-800 text-slate-400">300-420 kPa</span>
+            </div>
             <div id="val-fuel-press" class="text-xl font-digital text-white mt-0.5">-- kPa</div>
           </div>
         </div>

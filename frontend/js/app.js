@@ -221,6 +221,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // Alertas
         renderAlerts(diag.alerts);
 
+        // Avaliação Dinâmica de Referências e Cores dos Mostradores
+        updateLiveReferenceEvaluator(tel);
+
         // Atualização do Botão de Gravação
         if (rec) {
             isRecording = rec.is_recording;
@@ -233,6 +236,190 @@ document.addEventListener('DOMContentLoaded', () => {
                 btnRec.classList.remove('pulse-recording', 'bg-rose-600', 'text-white');
                 btnTxt.textContent = "Gravar Partida";
             }
+        }
+    }
+
+    /**
+     * Avaliador Inteligente de Parâmetros de Referência em Tempo Real
+     * Atualiza etiquetas e cores (Verde / Amarelo / Vermelho) conforme o regime do motor
+     */
+    function updateLiveReferenceEvaluator(tel) {
+        const rpm = tel.rpm || 0;
+        const speed = tel.speed || 0;
+        const v = tel.voltage || 0;
+
+        // Determina o estado operacional do motor
+        let state = "OFF"; // Motor Desligado / Contato Ligado
+        if (rpm > 0 && rpm < 500) {
+            state = "CRANKING"; // Arranque / Partida
+        } else if (rpm >= 500 && rpm <= 1100 && speed < 5) {
+            state = "IDLE"; // Marcha Lenta
+        } else if (rpm > 1100 || speed >= 5) {
+            state = "RUNNING"; // Em Movimento / Cruzeiro
+        }
+
+        // Helper para estilizar badge e painel
+        const setRef = (badgeId, panelId, text, status) => {
+            const badge = document.getElementById(badgeId);
+            const panel = document.getElementById(panelId);
+            if (badge) {
+                badge.textContent = text;
+                if (status === 'ok') {
+                    badge.className = "text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-950/80 text-emerald-400 border border-emerald-500/40 shadow-sm transition-all";
+                } else if (status === 'warn') {
+                    badge.className = "text-[10px] font-mono px-2 py-0.5 rounded bg-amber-950/80 text-amber-400 border border-amber-500/40 shadow-sm transition-all";
+                } else if (status === 'danger') {
+                    badge.className = "text-[10px] font-mono px-2 py-0.5 rounded bg-rose-950/80 text-rose-400 border border-rose-500/50 shadow-sm animate-pulse transition-all";
+                } else {
+                    badge.className = "text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800/90 text-slate-400 border border-slate-700/60 shadow-sm transition-all";
+                }
+            }
+            if (panel) {
+                if (status === 'danger') {
+                    panel.classList.add('border-rose-500/50', 'bg-rose-950/10');
+                    panel.classList.remove('border-emerald-500/30', 'border-amber-500/30');
+                } else if (status === 'warn') {
+                    panel.classList.add('border-amber-500/40');
+                    panel.classList.remove('border-rose-500/50', 'border-emerald-500/30', 'bg-rose-950/10');
+                } else if (status === 'ok') {
+                    panel.classList.add('border-emerald-500/30');
+                    panel.classList.remove('border-rose-500/50', 'border-amber-500/40', 'bg-rose-950/10');
+                } else {
+                    panel.classList.remove('border-rose-500/50', 'border-amber-500/40', 'border-emerald-500/30', 'bg-rose-950/10');
+                }
+            }
+        };
+
+        // 1. Tensão da Bateria
+        if (v > 0) {
+            if (state === "OFF") {
+                if (v >= 12.3 && v <= 12.9) setRef('ref-badge-voltage', 'panel-gauge-voltage', 'Ideal: 12.4 a 12.8V (Repouso)', 'ok');
+                else if (v >= 11.9 && v < 12.3) setRef('ref-badge-voltage', 'panel-gauge-voltage', 'Atenção: 11.9 a 12.3V (Fraca)', 'warn');
+                else setRef('ref-badge-voltage', 'panel-gauge-voltage', 'Crítico: < 11.9V (Descarregada)', 'danger');
+            } else if (state === "CRANKING") {
+                if (v >= 10.0) setRef('ref-badge-voltage', 'panel-gauge-voltage', 'Ideal: > 10.0V (Arranque Forte)', 'ok');
+                else if (v >= 9.6) setRef('ref-badge-voltage', 'panel-gauge-voltage', 'Atenção: 9.6 a 9.9V (Queda Média)', 'warn');
+                else setRef('ref-badge-voltage', 'panel-gauge-voltage', 'Crítico: < 9.6V (Queda Severa)', 'danger');
+            } else {
+                if (v >= 13.5 && v <= 14.6) setRef('ref-badge-voltage', 'panel-gauge-voltage', 'Ideal: 13.5 a 14.5V (Alternador OK)', 'ok');
+                else if ((v >= 13.0 && v < 13.5) || (v > 14.6 && v <= 14.9)) setRef('ref-badge-voltage', 'panel-gauge-voltage', 'Atenção: Carga Fora da Faixa', 'warn');
+                else setRef('ref-badge-voltage', 'panel-gauge-voltage', 'Crítico: Falha no Alternador', 'danger');
+            }
+        }
+
+        // 2. RPM (Rotação)
+        if (state === "OFF") {
+            setRef('ref-badge-rpm', 'panel-gauge-rpm', 'Motor Parado (0 RPM)', 'neutral');
+        } else if (state === "CRANKING") {
+            if (rpm >= 180 && rpm <= 280) setRef('ref-badge-rpm', 'panel-gauge-rpm', 'Ideal: 180 a 280 RPM (Arranque)', 'ok');
+            else setRef('ref-badge-rpm', 'panel-gauge-rpm', 'Arranque Lento (< 180 RPM)', 'warn');
+        } else if (state === "IDLE") {
+            if (rpm >= 750 && rpm <= 950) setRef('ref-badge-rpm', 'panel-gauge-rpm', 'Ideal: 750 a 950 RPM (Lenta Estável)', 'ok');
+            else if (rpm >= 650 && rpm <= 1100) setRef('ref-badge-rpm', 'panel-gauge-rpm', 'Atenção: Lenta Oscilando', 'warn');
+            else setRef('ref-badge-rpm', 'panel-gauge-rpm', 'Crítico: Lenta Anômala', 'danger');
+        } else {
+            setRef('ref-badge-rpm', 'panel-gauge-rpm', `Cruzeiro: ${rpm} RPM`, 'ok');
+        }
+
+        // 3. Vácuo / Pressão no Coletor (MAP)
+        if (tel.map !== null) {
+            if (state === "OFF") {
+                if (tel.map >= 92 && tel.map <= 105) setRef('ref-badge-map', 'panel-gauge-map', 'Ideal: 95 a 105 kPa (Atm)', 'ok');
+                else setRef('ref-badge-map', 'panel-gauge-map', 'Sensor MAP Descalibrado', 'warn');
+            } else if (state === "IDLE") {
+                if (tel.map >= 26 && tel.map <= 38) setRef('ref-badge-map', 'panel-gauge-map', 'Ideal: 28 a 38 kPa (Vácuo Saudável)', 'ok');
+                else if (tel.map > 38 && tel.map <= 48) setRef('ref-badge-map', 'panel-gauge-map', 'Atenção: 39 a 48 kPa (Carga/Lenta)', 'warn');
+                else if (tel.map > 48) setRef('ref-badge-map', 'panel-gauge-map', 'Crítico: > 48 kPa (Ar Falso / Ponto)', 'danger');
+                else setRef('ref-badge-map', 'panel-gauge-map', 'Vácuo Muito Alto (< 26 kPa)', 'warn');
+            } else {
+                setRef('ref-badge-map', 'panel-gauge-map', 'Cruzeiro: 20 a 75 kPa', 'ok');
+            }
+        }
+
+        // 4. Velocidade
+        setRef('ref-badge-speed', 'panel-gauge-speed', speed > 0 ? `Em Movimento: ${speed} km/h` : 'Veículo Parado (0 km/h)', 'ok');
+
+        // 5. Temperatura do Motor (ECT)
+        if (tel.ect !== null) {
+            if (tel.ect < 60) setRef('ref-badge-ect', 'box-card-ect', `Frio: ${tel.ect}°C (Aquecendo)`, 'warn');
+            else if (tel.ect >= 60 && tel.ect <= 78) setRef('ref-badge-ect', 'box-card-ect', `Morno: ${tel.ect}°C`, 'warn');
+            else if (tel.ect >= 79 && tel.ect <= 98) setRef('ref-badge-ect', 'box-card-ect', 'Ideal: 82 a 98°C (Operacional)', 'ok');
+            else if (tel.ect >= 99 && tel.ect <= 104) setRef('ref-badge-ect', 'box-card-ect', 'Atenção: 99 a 104°C (Ventoinha)', 'warn');
+            else setRef('ref-badge-ect', 'box-card-ect', 'Crítico: > 105°C (Superaquecimento)', 'danger');
+        }
+
+        // 6. Temperatura do Ar (IAT)
+        if (tel.iat !== null) {
+            if (tel.iat >= 10 && tel.iat <= 55) setRef('ref-badge-iat', 'box-card-iat', 'Ideal: 15 a 50°C', 'ok');
+            else if (tel.iat > 55) setRef('ref-badge-iat', 'box-card-iat', 'Ar Aquecido (> 55°C)', 'warn');
+            else setRef('ref-badge-iat', 'box-card-iat', 'Ar Muito Gelado (< 10°C)', 'warn');
+        }
+
+        // 7. Borboleta (TPS)
+        if (tel.tps !== null) {
+            if (state === "IDLE" || state === "OFF") {
+                if (tel.tps >= 6 && tel.tps <= 18) setRef('ref-badge-tps', 'box-card-tps', 'Ideal: 8 a 16% (Lenta)', 'ok');
+                else if (tel.tps > 18) setRef('ref-badge-tps', 'box-card-tps', 'TBI Aberto / Sujo (> 18%)', 'warn');
+                else setRef('ref-badge-tps', 'box-card-tps', 'Ideal: 8 a 16%', 'ok');
+            } else {
+                setRef('ref-badge-tps', 'box-card-tps', `${tel.tps}% Abertura`, 'ok');
+            }
+        }
+
+        // 8. Ponto de Ignição (Timing Advance)
+        if (tel.timing_advance !== null) {
+            if (state === "IDLE") {
+                if (tel.timing_advance >= 4 && tel.timing_advance <= 16) setRef('ref-badge-timing', 'box-card-timing', 'Ideal: +5 a +15° (Lenta)', 'ok');
+                else setRef('ref-badge-timing', 'box-card-timing', 'Ponto Fora da Lenta', 'warn');
+            } else {
+                setRef('ref-badge-timing', 'box-card-timing', `${tel.timing_advance}° APMS`, 'ok');
+            }
+        }
+
+        // 9. Carga do Motor
+        if (tel.engine_load !== null) {
+            if (state === "IDLE") {
+                if (tel.engine_load >= 12 && tel.engine_load <= 32) setRef('ref-badge-load', 'box-card-load', 'Ideal: 15 a 30% (Lenta)', 'ok');
+                else if (tel.engine_load > 32) setRef('ref-badge-load', 'box-card-load', 'Esforço Alto na Lenta', 'warn');
+                else setRef('ref-badge-load', 'box-card-load', 'Carga Baixa', 'ok');
+            } else {
+                setRef('ref-badge-load', 'box-card-load', `${tel.engine_load}% Calculada`, 'ok');
+            }
+        }
+
+        // 10. MAF
+        if (tel.maf !== null) {
+            if (state === "IDLE") {
+                if (tel.maf >= 1.6 && tel.maf <= 3.8) setRef('ref-badge-maf', 'box-card-maf', 'Ideal: 1.8 a 3.5 g/s', 'ok');
+                else setRef('ref-badge-maf', 'box-card-maf', 'Fluxo Atípico', 'warn');
+            } else {
+                setRef('ref-badge-maf', 'box-card-maf', `${tel.maf} g/s`, 'ok');
+            }
+        }
+
+        // 11. STFT (Ajuste Curto Prazo)
+        if (tel.stft !== null) {
+            const absSTFT = Math.abs(tel.stft);
+            if (absSTFT <= 5.0) setRef('ref-badge-stft', null, 'Ideal: -5% a +5% [Ótimo]', 'ok');
+            else if (absSTFT <= 12.0) setRef('ref-badge-stft', null, 'Normal: -12% a +12%', 'ok');
+            else if (absSTFT <= 20.0) setRef('ref-badge-stft', null, 'Atenção: Correção Elevada', 'warn');
+            else setRef('ref-badge-stft', null, 'Crítico: Mistura Saturada!', 'danger');
+        }
+
+        // 12. LTFT (Ajuste Longo Prazo)
+        if (tel.ltft !== null) {
+            const absLTFT = Math.abs(tel.ltft);
+            if (absLTFT <= 5.0) setRef('ref-badge-ltft', null, 'Ideal: -5% a +5% [Perfeito]', 'ok');
+            else if (absLTFT <= 14.0) setRef('ref-badge-ltft', null, 'Ajuste Adaptativo Normal', 'ok');
+            else if (absLTFT <= 20.0) setRef('ref-badge-ltft', null, 'Atenção: Desvio Crônico', 'warn');
+            else setRef('ref-badge-ltft', null, 'Crítico: Mapa Corrompido!', 'danger');
+        }
+
+        // 13. Sonda Lambda 1
+        if (tel.o2_b1s1 !== null) {
+            if (tel.o2_b1s1 >= 0.10 && tel.o2_b1s1 <= 0.85) setRef('ref-badge-o2', 'box-val-o2', 'Ideal: 0.1 a 0.9V oscilando', 'ok');
+            else if (tel.o2_b1s1 < 0.10) setRef('ref-badge-o2', 'box-val-o2', 'Mistura Pobre (< 0.1V)', 'danger');
+            else setRef('ref-badge-o2', 'box-val-o2', 'Mistura Rica (> 0.85V)', 'warn');
         }
     }
 
